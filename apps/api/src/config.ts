@@ -311,7 +311,7 @@ const configSchema = z.object({
   // 32-byte key (hex or base64) used to AES-256-GCM encrypt stored bot tokens.
   // If unset, tokens are stored with a `plain:` prefix (self-hosted only).
   SLACK_TOKEN_ENCRYPTION_KEY: z.string().optional(),
-  ALLOW_LOCAL_WEBHOOKS: emptyStringAsUndefined(z.stringbool()),
+  ALLOW_LOCAL_WEBHOOKS: z.stringbool().optional(),
   WEBHOOK_USE_RABBITMQ: z.stringbool().optional(),
 
   // Firecrawl Features
@@ -421,4 +421,8 @@ const validatedConfigSchema = configSchema.superRefine((value, context) => {
   }
 });
 
-export const config = validatedConfigSchema.parse(process.env);
+export const config = validatedConfigSchema.parse(
+  Object.fromEntries(
+    Object.entries(process.env).filter(([, value]) => value !== ""),
+  ),
+);
