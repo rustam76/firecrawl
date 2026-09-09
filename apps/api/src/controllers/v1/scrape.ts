@@ -335,6 +335,17 @@ async function scrapeControllerInner(
         });
       }
 
+      // Thrown when the post-redirect destination of an admitted URL is
+      // blocklisted; same client-facing semantics as the middleware
+      // blocklist rejection.
+      if (e.code === "CRAWL_DENIAL") {
+        return res.status(403).json({
+          success: false,
+          code: e.code,
+          error: e.message,
+        });
+      }
+
       if (e.code === "SCRAPE_MEDIA_ACCESS_DENIED") {
         return res.status(403).json({
           success: false,

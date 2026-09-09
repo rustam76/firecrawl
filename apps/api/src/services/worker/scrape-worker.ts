@@ -433,6 +433,43 @@ async function processJob(job: NuQJob<ScrapeJobSingleUrls>) {
 
     const doc = pipeline.document;
 
+    // The blocklist middleware only checks the requested URL, so a clean
+    // URL that redirects to a blocklisted domain would bypass it. Re-check
+    // the final URL on every job type, not just crawls. Exchange-flagged
+    // orgs are licensed to receive blocklisted-domain content through the
+    // exchange engine (engine selection already fails closed for them when
+    // the exchange can't serve), so skip them here. Monitors do no
+    // in-pipeline blocklist enforcement (business rule, see the monitoring
+    // runner), and parse jobs report the uploaded filename as the source
+    // URL, so both are excluded.
+    if (
+      job.data.origin !== "monitor" &&
+      !job.data.internalOptions?.isParse &&
+      doc.metadata.url !== undefined &&
+      doc.metadata.sourceURL !== undefined &&
+      doc.metadata.url !== doc.metadata.sourceURL
+    ) {
+      // Crawl/batch jobs don't carry teamFlags in internalOptions; fall
+      // back to the (Redis-cached) ACUC lookup for flags and org id.
+      let teamFlags = job.data.internalOptions?.teamFlags ?? null;
+      let orgId = job.data.internalOptions?.orgId ?? null;
+      if (job.data.internalOptions?.teamFlags === undefined) {
+        const teamChunk = await getACUCTeam(job.data.team_id);
+        teamFlags = teamChunk?.flags ?? null;
+        orgId = orgId ?? teamChunk?.org_id ?? null;
+      }
+      if (
+        teamFlags?.professionalProfileCompanyDataBeta !== true &&
+        isUrlBlocked(doc.metadata.url, teamFlags, {
+          team_id: job.data.team_id,
+          org_id: orgId,
+          origin: job.data.origin,
+        })
+      ) {
+        throw new CrawlDenialError(UNSUPPORTED_SITE_MESSAGE); // TODO: make this its own error type that is ignored by error tracking
+      }
+    }
+
     const rawHtml = doc.rawHtml ?? "";
 
     if (!hasFormatOfType(job.data.scrapeOptions.formats, "rawHtml")) {
@@ -528,17 +565,6 @@ async function processJob(job: NuQJob<ScrapeJobSingleUrls>) {
           // TODO: re-fetch sitemap for redirect target domain
           sc.originUrl = doc.metadata.url;
           await saveCrawl(job.data.crawl_id, sc);
-        }
-
-        const teamChunk = await getACUCTeam(job.data.team_id);
-        if (
-          isUrlBlocked(doc.metadata.url, teamChunk?.flags ?? null, {
-            team_id: job.data.team_id,
-            org_id: teamChunk?.org_id ?? null,
-            origin: job.data.origin,
-          })
-        ) {
-          throw new CrawlDenialError(UNSUPPORTED_SITE_MESSAGE); // TODO: make this its own error type that is ignored by error tracking
         }
 
         const p1 = generateURLPermutations(normalizeURL(doc.metadata.url, sc));
