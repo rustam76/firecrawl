@@ -60,8 +60,8 @@ services:
       PROXY_SERVER: ${PROXY_SERVER}
       PROXY_USERNAME: ${PROXY_USERNAME}
       PROXY_PASSWORD: ${PROXY_PASSWORD}
-      ALLOW_LOCAL_WEBHOOKS: ${ALLOW_LOCAL_WEBHOOKS:-false}
-      BLOCK_MEDIA: ${BLOCK_MEDIA:-false}
+      ALLOW_LOCAL_WEBHOOKS: "false"
+      BLOCK_MEDIA: "false"
       # Configure maximum concurrent pages for Playwright browser instances
       MAX_CONCURRENT_PAGES: ${CRAWL_CONCURRENT_REQUESTS:-10}
     networks:
@@ -93,7 +93,7 @@ services:
       WORKER_PORT: ${WORKER_PORT:-3005}
       NUQ_RABBITMQ_URL: amqp://rabbitmq:5672
       HARNESS_STARTUP_TIMEOUT_MS: ${HARNESS_STARTUP_TIMEOUT_MS:-60000}
-      ALLOW_LOCAL_WEBHOOKS: ${ALLOW_LOCAL_WEBHOOKS:-false}
+      ALLOW_LOCAL_WEBHOOKS: "false"
       ENV: local
     depends_on:
       redis:
@@ -104,7 +104,10 @@ services:
         condition: service_healthy
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
-    command: node dist/src/harness.js --start-docker
+    command:
+      - /bin/sh
+      - -c
+      - '[ -n "$$ALLOW_LOCAL_WEBHOOKS" ] || export ALLOW_LOCAL_WEBHOOKS=false; [ -n "$$USE_DB_AUTHENTICATION" ] || export USE_DB_AUTHENTICATION=false; exec node dist/src/harness.js --start-docker'
     # Resource limits for Docker Compose (not Swarm)
     # Increase if you have more CPU cores/RAM available
     cpus: 4.0
