@@ -101,7 +101,7 @@ services:
       playwright-service:
         condition: service_started
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
     command:
@@ -132,17 +132,14 @@ services:
         compress: "true"
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13-management
     hostname: rabbitmq
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq
     networks:
       - backend
-    command: rabbitmq-server
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 40s
+      disable: true
     logging:
       driver: "json-file"
       options:
