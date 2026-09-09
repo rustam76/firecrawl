@@ -55,9 +55,9 @@ x-common-env: &common-env
   SEARXNG_ENDPOINT: ${SEARXNG_ENDPOINT}
   SEARXNG_ENGINES: ${SEARXNG_ENGINES}
   SEARXNG_CATEGORIES: ${SEARXNG_CATEGORIES}
-  # Set NUQ_BACKEND=fdb to run the queue on FoundationDB instead of Postgres
+  # Set both NUQ_BACKEND=fdb and FDB_CLUSTER_FILE=/var/fdb/fdb.cluster to use FDB
   NUQ_BACKEND: ${NUQ_BACKEND}
-  FDB_CLUSTER_FILE: ${NUQ_BACKEND:+/var/fdb/fdb.cluster}
+  FDB_CLUSTER_FILE: ${FDB_CLUSTER_FILE}
 
 services:
   playwright-service:
